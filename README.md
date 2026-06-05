@@ -1,6 +1,4 @@
-# Synthetic Ribbon Cloud Demo
-
-![curve preview](curve.pdf)
+![curve preview](curve.png)
 
 ## How to Run
 
