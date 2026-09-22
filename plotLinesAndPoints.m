@@ -1,4 +1,5 @@
 function plotLinesAndPoints(points, lines)
+%PLOTLINESANDPOINTS Plot 3D points and line segments on the current axes.
     hold on;
     scatter3(points(:,1), points(:,2), points(:,3), 30, 'filled');
     for i = 1:size(lines,1)

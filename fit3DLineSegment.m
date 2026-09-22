@@ -1,13 +1,18 @@
 function [startPt, endPt, midPt] = fit3DLineSegment(projPoints3D, segmentLength, initialMidPt, lines)
+%FIT3DLINESEGMENT Fit a fixed-length 3D line segment to a set of 3D points.
+%   The segment direction is the principal axis of the points (SVD); its
+%   midpoint is then shifted along that axis to minimize the sum of squared
+%   distances from the points to the segment.
 
 validateattributes(projPoints3D, {'numeric'}, {'ncols',3,'2d'});
 validateattributes(segmentLength, {'numeric'}, {'scalar','positive'});
-projPoints3D = double(projPoints3D); 
+projPoints3D = double(projPoints3D);
 
 if size(projPoints3D, 1) < 2
     error('fit3DLineSegment:NotEnoughPoints', 'At least two points are needed for line segment fitting.');
 end
 
+% Initial midpoint: provided guess or the point centroid.
 if nargin < 3 || isempty(initialMidPt)
     midPt_initial = mean(projPoints3D, 1);
 else
@@ -16,15 +21,18 @@ else
 end
 centeredPoints = projPoints3D - midPt_initial;
 
+% Principal axis of the centered points = best-fit line direction.
 if all(vecnorm(centeredPoints, 2, 2) < 1e-12)
     mainDirection = [1, 0, 0];
 else
     [~, ~, V] = svd(centeredPoints, 'econ');
-    mainDirection = double(V(:, 1)'); 
+    mainDirection = double(V(:, 1)');
 end
 
-t = (projPoints3D - midPt_initial) * mainDirection'; 
+% Scalar coordinate of each point along the main direction.
+t = (projPoints3D - midPt_initial) * mainDirection';
 
+% Shift the midpoint along the direction to minimize point-to-segment distance.
 L = segmentLength;
 objectiveFunc = @(delta) sum(arrayfun(@(ti) computeDistanceSquared(ti - delta, L), t, 'UniformOutput', true));
 options = optimset('Display', 'off');
@@ -40,8 +48,9 @@ if abs(calcLength - segmentLength) > 1e-6
     error('Line segment length error exceeds tolerance: calculated value %.6f vs specified value %.6f', calcLength, segmentLength);
 end
 
+% Squared distance from a projection t_proj to the interval [-L/2, L/2].
 function dSq = computeDistanceSquared(t_proj, L)
-    t_proj = double(t_proj); 
+    t_proj = double(t_proj);
     if t_proj < -L/2
         d = -L/2 - t_proj;
     elseif t_proj > L/2
@@ -52,6 +61,7 @@ function dSq = computeDistanceSquared(t_proj, L)
     dSq = d^2;
 end
 
+% Diagnostic plot every 10 fitted segments.
 if mod(size(lines, 1), 10) == 0
     figure;
     scatter3(projPoints3D(:,1), projPoints3D(:,2), projPoints3D(:,3), 'b.');

@@ -1,4 +1,8 @@
 function [directions, averagePoints, lines] = processTrackSide(cloud, sliceInterval, ~, ~, direction, L)
+%PROCESSTRACKSIDE Fit line segments along one side of a track using slices.
+%   Walks along `direction` in steps of `sliceInterval`, fits a line segment of
+%   length L to each slice, and returns the segments and their midpoints.
+
     direction = direction / norm(direction);
 
     averagePoints = [];
@@ -8,28 +12,31 @@ function [directions, averagePoints, lines] = processTrackSide(cloud, sliceInter
 
     projVals = cloud.Location * direction';
     minProj = min(projVals);
-    p_end = (minProj + sliceInterval) * direction; 
+    p_end = (minProj + sliceInterval) * direction;
     %if size(averagePoints, 1) > 2
         %p_end = initialMidPt
    while true
         directions = [directions; direction];
+
         d = cloud.Location - p_end;
         distToPlane = d * direction';
-        
+
+        % Points in the half-open slice [p_end - sliceInterval, p_end).
         filteredPoints = cloud.select(distToPlane >= -sliceInterval & distToPlane < 0);
-   
+
         if isempty(filteredPoints.Location)
             break;
         end
-    
+
         points = double(filteredPoints.Location);
-        
+
         if isempty(initialMidPt)
             planePoint = p_end;
         else
             planePoint = initialMidPt;
         end
-        
+
+        % Project slice points onto the plane at planePoint.
         projPoints = points - ((points - planePoint) * direction') * direction;
 
         if size(projPoints, 1) < 2 || size(unique(projPoints, 'rows'), 1) < 2
@@ -38,7 +45,8 @@ function [directions, averagePoints, lines] = processTrackSide(cloud, sliceInter
         [start, endPt, mid] = fit3DLineSegment(projPoints, L, initialMidPt, lines);
         lines = [lines; start,endPt];
         averagePoints = [averagePoints; mid];
-        
+
+        % Refine the walking direction from the last two midpoints.
         if size(averagePoints, 1) > 2
             newDir = diff(averagePoints(end-1:end, :));
 
